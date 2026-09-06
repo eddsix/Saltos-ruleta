@@ -1,183 +1,124 @@
 /*
- * European Roulette Jumps
- * The wheel order is the real European roulette pocket order.
+ * European Roulette Jumps v2
+ * European wheel order:
+ * 0 → 32 → 15 → 19 → 4 → 21 → 2 → 25 → 17 → 34 → 6 → 27 →
+ * 13 → 36 → 11 → 30 → 8 → 23 → 10 → 5 → 24 → 16 → 33 → 1 →
+ * 20 → 14 → 31 → 9 → 22 → 18 → 29 → 7 → 28 → 12 → 35 → 3 → 26
  *
- * Positive jump = clockwise according to this array.
- * Negative jump = counter-clockwise.
- *
+ * Forward through this wheel is positive.
  * Results are displayed newest first.
  */
 
-const WHEEL = [
-  0, 32, 15, 19, 4, 21, 2, 25, 17, 34,
-  6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
-  24, 16, 33, 1, 20, 14, 31, 9, 22, 18,
-  29, 7, 28, 12, 35, 3, 26
-];
+const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 
-const resultsEl = document.getElementById("results");
-const jumpsEl = document.getElementById("jumps");
-const jumpGridEl = document.getElementById("jumpGrid");
-const inputEl = document.getElementById("numberInput");
-const addBtn = document.getElementById("addResult");
-const clearBtn = document.getElementById("clearHistory");
-const errorEl = document.getElementById("error");
-const resultCountEl = document.getElementById("resultCount");
-const jumpCountEl = document.getElementById("jumpCount");
+const resultsEl=document.getElementById("results");
+const jumpsEl=document.getElementById("jumps");
+const jumpGridEl=document.getElementById("jumpGrid");
+const numberGridEl=document.getElementById("numberGrid");
+const clearBtn=document.getElementById("clearHistory");
+const resultCountEl=document.getElementById("resultCount");
+const jumpCountEl=document.getElementById("jumpCount");
 
-let results = [];
-let jumps = [];
-const jumpCounts = new Map();
+let results=[];
+let jumps=[];
+const jumpCounts=new Map();
+for(let i=1;i<=18;i++) jumpCounts.set(i,0);
 
-for (let i = 1; i <= 18; i++) jumpCounts.set(i, 0);
+function positionOf(n){return WHEEL.indexOf(n)}
 
-function positionOf(number) {
-  return WHEEL.indexOf(number);
+function calculateJump(previous,current){
+  const a=positionOf(previous), b=positionOf(current);
+  if(a<0||b<0) throw new Error("Resultado no válido");
+  let jump=(b-a+WHEEL.length)%WHEEL.length;
+  if(jump>WHEEL.length/2) jump-=WHEEL.length;
+  return jump;
 }
 
-function calculateJump(previous, current) {
-  const previousIndex = positionOf(previous);
-  const currentIndex = positionOf(current);
-
-  if (previousIndex < 0 || currentIndex < 0) {
-    throw new Error("Resultado no válido.");
+function buildNumberButtons(){
+  numberGridEl.innerHTML="";
+  for(let n=0;n<=36;n++){
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className="number-btn";
+    if(n===0) btn.classList.add("zero");
+    btn.textContent=n;
+    btn.setAttribute("aria-label",`Resultado ${n}`);
+    btn.addEventListener("click",()=>addResult(n));
+    numberGridEl.appendChild(btn);
   }
-
-  // Clockwise movement is forward through WHEEL.
-  let clockwise = (currentIndex - previousIndex + WHEEL.length) % WHEEL.length;
-
-  // Normalize to the signed shortest circular jump.
-  if (clockwise > WHEEL.length / 2) {
-    clockwise -= WHEEL.length;
-  }
-
-  return clockwise;
 }
 
-function renderJumpGrid() {
-  jumpGridEl.innerHTML = "";
+function renderResults(){
+  resultsEl.innerHTML="";
+  if(!results.length){
+    resultsEl.className="results empty";
+    resultsEl.textContent="Pulsa un número para comenzar";
+  }else{
+    resultsEl.className="results";
+    results.forEach((n,i)=>{
+      const el=document.createElement("div");
+      el.className="number"+(i===0?" latest":"");
+      el.textContent=n;
+      resultsEl.appendChild(el);
+    });
+  }
+  resultCountEl.textContent=`${results.length} ${results.length===1?"tirada":"tiradas"}`;
+}
 
-  for (let i = 1; i <= 18; i++) {
-    const cell = document.createElement("div");
-    cell.className = "jump-cell";
+function renderJumps(){
+  jumpsEl.innerHTML="";
+  if(!jumps.length){
+    jumpsEl.className="jumps empty";
+    jumpsEl.textContent="Los saltos aparecerán aquí";
+  }else{
+    jumpsEl.className="jumps";
+    jumps.forEach(j=>{
+      const el=document.createElement("div");
+      el.className="jump "+(j>=0?"positive":"negative");
+      el.textContent=j>0?`+${j}`:`${j}`;
+      jumpsEl.appendChild(el);
+    });
+  }
+  jumpCountEl.textContent=`${jumps.length} ${jumps.length===1?"salto":"saltos"}`;
+}
 
-    if (jumpCounts.get(i) > 0) cell.classList.add("active");
-
-    const label = document.createElement("div");
-    label.className = "label";
-    label.textContent = `±${i}`;
-
-    const count = document.createElement("div");
-    count.className = "count";
-    count.textContent = `${jumpCounts.get(i)} ${jumpCounts.get(i) === 1 ? "vez" : "veces"}`;
-
-    cell.append(label, count);
+function renderJumpGrid(){
+  jumpGridEl.innerHTML="";
+  for(let i=1;i<=18;i++){
+    const count=jumpCounts.get(i);
+    const cell=document.createElement("div");
+    cell.className="jump-cell"+(count>0?" active":"");
+    const label=document.createElement("div");
+    label.className="label";
+    label.textContent=`±${i}`;
+    const counter=document.createElement("div");
+    counter.className="count";
+    counter.textContent=`${count} ${count===1?"vez":"veces"}`;
+    cell.append(label,counter);
     jumpGridEl.appendChild(cell);
   }
 }
 
-function renderResults() {
-  resultsEl.innerHTML = "";
+function render(){renderResults();renderJumps();renderJumpGrid()}
 
-  if (results.length === 0) {
-    resultsEl.classList.add("empty");
-    resultsEl.textContent = "Introduce el primer resultado";
-  } else {
-    resultsEl.classList.remove("empty");
-
-    results.forEach((number, index) => {
-      const item = document.createElement("div");
-      item.className = "number";
-      if (index === 0) item.classList.add("latest");
-      item.textContent = number;
-      resultsEl.appendChild(item);
-    });
-  }
-
-  resultCountEl.textContent = `${results.length} ${results.length === 1 ? "tirada" : "tiradas"}`;
-}
-
-function renderJumps() {
-  jumpsEl.innerHTML = "";
-
-  if (jumps.length === 0) {
-    jumpsEl.classList.add("empty");
-    jumpsEl.textContent = "Los saltos aparecerán aquí";
-  } else {
-    jumpsEl.classList.remove("empty");
-
-    jumps.forEach(jump => {
-      const item = document.createElement("div");
-      item.className = "jump";
-      item.classList.add(jump >= 0 ? "positive" : "negative");
-      item.textContent = jump > 0 ? `+${jump}` : `${jump}`;
-      jumpsEl.appendChild(item);
-    });
-  }
-
-  jumpCountEl.textContent = `${jumps.length} ${jumps.length === 1 ? "salto" : "saltos"}`;
-}
-
-function render() {
-  renderResults();
-  renderJumps();
-  renderJumpGrid();
-}
-
-function showError(message) {
-  errorEl.textContent = message;
-}
-
-function clearError() {
-  errorEl.textContent = "";
-}
-
-function addResult() {
-  const raw = inputEl.value.trim();
-
-  if (raw === "") {
-    showError("Introduce un número entre 0 y 36.");
-    return;
-  }
-
-  const number = Number(raw);
-
-  if (!Number.isInteger(number) || number < 0 || number > 36) {
-    showError("El resultado debe ser un número entero entre 0 y 36.");
-    return;
-  }
-
-  clearError();
-
-  // The new result is inserted first because the newest result is displayed first.
-  if (results.length > 0) {
-    const jump = calculateJump(results[0], number);
+function addResult(number){
+  if(results.length){
+    const jump=calculateJump(results[0],number);
     jumps.unshift(jump);
-    jumpCounts.set(Math.abs(jump), jumpCounts.get(Math.abs(jump)) + 1);
+    const magnitude=Math.abs(jump);
+    jumpCounts.set(magnitude,jumpCounts.get(magnitude)+1);
   }
-
   results.unshift(number);
-  inputEl.value = "";
-  inputEl.focus();
-
   render();
 }
 
-function clearHistory() {
-  results = [];
-  jumps = [];
-  for (let i = 1; i <= 18; i++) jumpCounts.set(i, 0);
-
-  clearError();
+function clearHistory(){
+  results=[];
+  jumps=[];
+  for(let i=1;i<=18;i++) jumpCounts.set(i,0);
   render();
-  inputEl.focus();
 }
 
-addBtn.addEventListener("click", addResult);
-clearBtn.addEventListener("click", clearHistory);
-
-inputEl.addEventListener("keydown", event => {
-  if (event.key === "Enter") addResult();
-});
-
+clearBtn.addEventListener("click",clearHistory);
+buildNumberButtons();
 render();

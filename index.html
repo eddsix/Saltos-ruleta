@@ -1,57 +1,54 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0b0d12">
-  <title>European Roulette Jumps</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b0d12">
+<title>European Roulette Jumps</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="app">
-    <header class="header">
-      <div>
-        <h1>European Roulette Jumps</h1>
-        <p>Registro de resultados y saltos</p>
-      </div>
-      <button id="clearHistory" class="clear-btn" type="button">Borrar historial</button>
-    </header>
+<main class="app">
+  <header class="header">
+    <div>
+      <h1>European Roulette Jumps</h1>
+      <p>Registro de resultados y saltos</p>
+    </div>
+    <button id="clearHistory" class="clear-btn" type="button">Borrar historial</button>
+  </header>
 
-    <section class="panel">
-      <div class="panel-title">
-        <h2>Resultados</h2>
-        <span id="resultCount">0 tiradas</span>
-      </div>
-      <div id="results" class="results empty">Introduce el primer resultado</div>
-    </section>
+  <section class="panel">
+    <div class="panel-title">
+      <h2>Resultados</h2>
+      <span id="resultCount">0 tiradas</span>
+    </div>
+    <div id="results" class="results empty">Pulsa un número para comenzar</div>
+  </section>
 
-    <section class="panel">
-      <div class="panel-title">
-        <h2>Saltos</h2>
-        <span id="jumpCount">0 saltos</span>
-      </div>
-      <div id="jumps" class="jumps empty">Los saltos aparecerán aquí</div>
-    </section>
+  <section class="panel">
+    <div class="panel-title">
+      <h2>Saltos</h2>
+      <span id="jumpCount">0 saltos</span>
+    </div>
+    <div id="jumps" class="jumps empty">Los saltos aparecerán aquí</div>
+  </section>
 
-    <section class="panel">
-      <div class="panel-title">
-        <h2>Saltos detectados</h2>
-        <span>±1 — ±18</span>
-      </div>
-      <div id="jumpGrid" class="jump-grid" aria-label="Indicadores de saltos"></div>
-    </section>
+  <section class="panel">
+    <div class="panel-title">
+      <h2>Saltos detectados</h2>
+      <span>±1 — ±18</span>
+    </div>
+    <div id="jumpGrid" class="jump-grid"></div>
+  </section>
 
-    <section class="input-panel">
-      <div class="number-input-wrap">
-        <label for="numberInput">Nuevo resultado</label>
-        <input id="numberInput" type="number" min="0" max="36" inputmode="numeric"
-               autocomplete="off" placeholder="0–36" aria-label="Nuevo resultado">
-      </div>
-      <button id="addResult" class="add-btn" type="button">Añadir resultado</button>
-    </section>
-
-    <p id="error" class="error" role="alert" aria-live="polite"></p>
-  </main>
-  <script src="app.js"></script>
+  <section class="number-panel">
+    <div class="panel-title">
+      <h2>Resultado</h2>
+      <span>Pulsa el número que ha salido</span>
+    </div>
+    <div id="numberGrid" class="number-grid" aria-label="Números de la ruleta europea"></div>
+  </section>
+</main>
+<script src="app.js"></script>
 </body>
 </html>
