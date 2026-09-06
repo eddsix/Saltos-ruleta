@@ -11,42 +11,56 @@ const REDS = new Set([
 
 let results = [];
 let jumps = [];
-const detected = new Set();
 
-const resultHistory = document.getElementById("resultHistory");
-const jumpHistory = document.getElementById("jumpHistory");
-const numberGrid = document.getElementById("numberGrid");
-const detectedGrid = document.getElementById("detectedGrid");
-const resultCount = document.getElementById("resultCount");
-const jumpCount = document.getElementById("jumpCount");
-const clearHistory = document.getElementById("clearHistory");
+const $ = id => document.getElementById(id);
 
-function colorClass(n) {
-  if (n === 0) return "green";
-  return REDS.has(n) ? "red" : "black";
+const resultHistory = $("resultHistory");
+const jumpHistory = $("jumpHistory");
+const numberGrid = $("numberGrid");
+const detectedGrid = $("detectedGrid");
+const resultCount = $("resultCount");
+const jumpCount = $("jumpCount");
+const detectedCount = $("detectedCount");
+const undoResult = $("undoResult");
+const clearHistory = $("clearHistory");
+
+function colorClass(number) {
+  if (number === 0) return "green";
+  return REDS.has(number) ? "red" : "black";
 }
 
 function calculateJump(previous, current) {
-  const previousIndex = WHEEL.indexOf(previous);
-  const currentIndex = WHEEL.indexOf(current);
+  const from = WHEEL.indexOf(previous);
+  const to = WHEEL.indexOf(current);
 
-  let jump = currentIndex - previousIndex;
+  let jump = to - from;
+
   if (jump > 18) jump -= 37;
   if (jump < -18) jump += 37;
 
   return jump;
 }
 
+function buildJumps() {
+  const calculated = [];
+
+  for (let i = 0; i < results.length - 1; i++) {
+    calculated.push(calculateJump(results[i + 1], results[i]));
+  }
+
+  return calculated;
+}
+
 function renderNumberGrid() {
   numberGrid.innerHTML = "";
 
-  for (let n = 0; n <= 36; n++) {
+  for (let number = 0; number <= 36; number++) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `number-btn ${colorClass(n)}`;
-    button.textContent = n;
-    button.setAttribute("aria-label", `Registrar resultado ${n}`);
-    button.addEventListener("click", () => registerResult(n));
+    button.className = `number-btn ${colorClass(number)}`;
+    button.textContent = number;
+    button.setAttribute("aria-label", `Registrar ${number}`);
+    button.addEventListener("click", () => registerResult(number));
     numberGrid.appendChild(button);
   }
 }
@@ -54,83 +68,99 @@ function renderNumberGrid() {
 function renderResults() {
   resultHistory.innerHTML = "";
 
-  if (results.length === 0) {
+  if (!results.length) {
     resultHistory.className = "result-history empty";
-    const message = document.createElement("span");
-    message.textContent = "Selecciona el número que acaba de salir";
-    resultHistory.appendChild(message);
+    const text = document.createElement("span");
+    text.textContent = "Pulsa un número para registrar el resultado";
+    resultHistory.appendChild(text);
   } else {
     resultHistory.className = "result-history";
-    results.forEach(n => {
+
+    results.forEach(number => {
       const chip = document.createElement("div");
-      chip.className = `history-number ${colorClass(n)}`;
-      chip.textContent = n;
+      chip.className = `history-number ${colorClass(number)}`;
+      chip.textContent = number;
       resultHistory.appendChild(chip);
     });
   }
 
-  resultCount.textContent = `${results.length} ${results.length === 1 ? "resultado" : "resultados"}`;
+  resultCount.textContent =
+    `${results.length} ${results.length === 1 ? "resultado" : "resultados"}`;
+
+  undoResult.disabled = results.length === 0;
 }
 
 function renderJumps() {
   jumpHistory.innerHTML = "";
 
-  if (jumps.length === 0) {
+  if (!jumps.length) {
     jumpHistory.className = "jump-history empty";
-    const message = document.createElement("span");
-    message.textContent = "Los saltos aparecerán aquí";
-    jumpHistory.appendChild(message);
+    const text = document.createElement("span");
+    text.textContent = "Los saltos aparecerán aquí al registrar dos resultados";
+    jumpHistory.appendChild(text);
   } else {
     jumpHistory.className = "jump-history";
+
     jumps.forEach(jump => {
       const chip = document.createElement("div");
       chip.className = `jump-chip ${jump > 0 ? "positive" : jump < 0 ? "negative" : ""}`;
-      chip.textContent = jump > 0 ? `+${jump}` : `${jump}`;
+      chip.textContent = jump > 0 ? `+${jump}` : jump;
       jumpHistory.appendChild(chip);
     });
   }
 
-  jumpCount.textContent = `${jumps.length} ${jumps.length === 1 ? "salto" : "saltos"}`;
+  jumpCount.textContent =
+    `${jumps.length} ${jumps.length === 1 ? "salto" : "saltos"}`;
 }
 
 function renderDetected() {
   detectedGrid.innerHTML = "";
 
+  const detected = new Set(jumps.map(jump => Math.abs(jump)));
+
   for (let magnitude = 1; magnitude <= 18; magnitude++) {
     const cell = document.createElement("div");
     cell.className = "detected-cell";
-    if (detected.has(magnitude)) cell.classList.add("active");
     cell.textContent = `±${magnitude}`;
+
+    if (detected.has(magnitude)) {
+      cell.classList.add("active");
+    }
+
     detectedGrid.appendChild(cell);
   }
+
+  detectedCount.textContent = `${detected.size} / 18`;
+}
+
+function render() {
+  renderResults();
+  renderJumps();
+  renderDetected();
 }
 
 function registerResult(number) {
-  if (results.length > 0) {
-    const previous = results[0];
-    const jump = calculateJump(previous, number);
-    jumps.unshift(jump);
-    detected.add(Math.abs(jump));
-  }
-
   results.unshift(number);
-  renderResults();
-  renderJumps();
-  renderDetected();
+  jumps = buildJumps();
+  render();
 }
 
-function resetAll() {
+function undoLastResult() {
+  if (!results.length) return;
+
+  results.shift();
+  jumps = buildJumps();
+  render();
+}
+
+function clearAll() {
   results = [];
   jumps = [];
-  detected.clear();
-  renderResults();
-  renderJumps();
-  renderDetected();
+  render();
 }
 
-clearHistory.addEventListener("click", resetAll);
+undoResult.addEventListener("click", undoLastResult);
+clearHistory.addEventListener("click", clearAll);
 
 renderNumberGrid();
-renderResults();
-renderJumps();
-renderDetected();
+render();
