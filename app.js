@@ -11,6 +11,7 @@ const REDS = new Set([
 
 let results = [];
 let jumps = [];
+const detected = new Set();
 
 const resultHistory = document.getElementById("resultHistory");
 const jumpHistory = document.getElementById("jumpHistory");
@@ -18,7 +19,6 @@ const numberGrid = document.getElementById("numberGrid");
 const detectedGrid = document.getElementById("detectedGrid");
 const resultCount = document.getElementById("resultCount");
 const jumpCount = document.getElementById("jumpCount");
-const undoResult = document.getElementById("undoResult");
 const clearHistory = document.getElementById("clearHistory");
 
 function colorClass(n) {
@@ -31,21 +31,10 @@ function calculateJump(previous, current) {
   const currentIndex = WHEEL.indexOf(current);
 
   let jump = currentIndex - previousIndex;
-
   if (jump > 18) jump -= 37;
   if (jump < -18) jump += 37;
 
   return jump;
-}
-
-function buildJumpsFromResults() {
-  const rebuilt = [];
-
-  for (let i = 0; i < results.length - 1; i++) {
-    rebuilt.push(calculateJump(results[i + 1], results[i]));
-  }
-
-  return rebuilt;
 }
 
 function renderNumberGrid() {
@@ -72,7 +61,6 @@ function renderResults() {
     resultHistory.appendChild(message);
   } else {
     resultHistory.className = "result-history";
-
     results.forEach(n => {
       const chip = document.createElement("div");
       chip.className = `history-number ${colorClass(n)}`;
@@ -82,7 +70,6 @@ function renderResults() {
   }
 
   resultCount.textContent = `${results.length} ${results.length === 1 ? "resultado" : "resultados"}`;
-  undoResult.disabled = results.length === 0;
 }
 
 function renderJumps() {
@@ -95,7 +82,6 @@ function renderJumps() {
     jumpHistory.appendChild(message);
   } else {
     jumpHistory.className = "jump-history";
-
     jumps.forEach(jump => {
       const chip = document.createElement("div");
       chip.className = `jump-chip ${jump > 0 ? "positive" : jump < 0 ? "negative" : ""}`;
@@ -110,49 +96,41 @@ function renderJumps() {
 function renderDetected() {
   detectedGrid.innerHTML = "";
 
-  const detected = new Set(jumps.map(jump => Math.abs(jump)));
-
   for (let magnitude = 1; magnitude <= 18; magnitude++) {
     const cell = document.createElement("div");
     cell.className = "detected-cell";
-
-    if (detected.has(magnitude)) {
-      cell.classList.add("active");
-    }
-
+    if (detected.has(magnitude)) cell.classList.add("active");
     cell.textContent = `±${magnitude}`;
     detectedGrid.appendChild(cell);
   }
 }
 
-function renderAll() {
+function registerResult(number) {
+  if (results.length > 0) {
+    const previous = results[0];
+    const jump = calculateJump(previous, number);
+    jumps.unshift(jump);
+    detected.add(Math.abs(jump));
+  }
+
+  results.unshift(number);
   renderResults();
   renderJumps();
   renderDetected();
 }
 
-function registerResult(number) {
-  results.unshift(number);
-  jumps = buildJumpsFromResults();
-  renderAll();
-}
-
-function undoLastResult() {
-  if (results.length === 0) return;
-
-  results.shift();
-  jumps = buildJumpsFromResults();
-  renderAll();
-}
-
 function resetAll() {
   results = [];
   jumps = [];
-  renderAll();
+  detected.clear();
+  renderResults();
+  renderJumps();
+  renderDetected();
 }
 
-undoResult.addEventListener("click", undoLastResult);
 clearHistory.addEventListener("click", resetAll);
 
 renderNumberGrid();
-renderAll();
+renderResults();
+renderJumps();
+renderDetected();

@@ -5,6 +5,7 @@
 :root {
   --bg: #090d12;
   --panel: #11171f;
+  --panel-2: #0d131a;
   --line: rgba(255,255,255,.08);
   --text: #f4f6f8;
   --muted: #8d98a5;
@@ -61,13 +62,6 @@ h1 {
   letter-spacing: -.035em;
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.action-btn,
 .clear-btn {
   border: 1px solid rgba(255,255,255,.11);
   background: rgba(255,255,255,.045);
@@ -80,15 +74,9 @@ h1 {
   transition: .18s ease;
 }
 
-.action-btn:hover,
 .clear-btn:hover {
   background: rgba(255,255,255,.085);
   border-color: rgba(255,255,255,.18);
-}
-
-.action-btn:disabled {
-  opacity: .38;
-  cursor: default;
 }
 
 main {
@@ -125,6 +113,7 @@ main {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .08em;
+  opacity: .9;
 }
 
 h2 {
@@ -228,6 +217,10 @@ h2 {
   transform: translateY(1px) scale(.985);
 }
 
+.number-btn.green {
+  grid-column: span 1;
+}
+
 .jump-history {
   min-height: 96px;
 }
@@ -284,16 +277,9 @@ h2 {
   }
 
   .topbar {
-    align-items: flex-start;
     margin-bottom: 14px;
   }
 
-  .actions {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .action-btn,
   .clear-btn {
     padding: 9px 11px;
   }
@@ -331,16 +317,12 @@ h2 {
 }
 
 @media (max-width: 420px) {
-  .topbar {
-    gap: 10px;
-  }
-
-  .actions {
-    max-width: 155px;
-  }
-
   .number-grid {
     grid-template-columns: repeat(5, 1fr);
+  }
+
+  .detected-grid {
+    grid-template-columns: repeat(6, 1fr);
   }
 
   .history-number {
