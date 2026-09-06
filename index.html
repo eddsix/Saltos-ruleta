@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0d12">
 <title>European Roulette Jumps</title>
 <link rel="stylesheet" href="style.css">
@@ -12,41 +12,68 @@
   <header class="header">
     <div>
       <h1>European Roulette Jumps</h1>
-      <p>Registro de resultados y saltos</p>
+      <p>Resultados y saltos de la ruleta europea</p>
     </div>
     <button id="clearHistory" class="clear-btn" type="button">Borrar historial</button>
   </header>
 
   <section class="panel">
-    <div class="panel-title">
-      <h2>Resultados</h2>
-      <span id="resultCount">0 tiradas</span>
-    </div>
-    <div id="results" class="results empty">Pulsa un número para comenzar</div>
+    <div class="panel-title"><h2>Resultados</h2><span id="resultCount">0 tiradas</span></div>
+    <div id="results" class="scroll-row empty">Pulsa un número para comenzar</div>
   </section>
 
   <section class="panel">
-    <div class="panel-title">
-      <h2>Saltos</h2>
-      <span id="jumpCount">0 saltos</span>
-    </div>
-    <div id="jumps" class="jumps empty">Los saltos aparecerán aquí</div>
+    <div class="panel-title"><h2>Saltos</h2><span id="jumpCount">0 saltos</span></div>
+    <div id="jumps" class="scroll-row empty">Los saltos aparecerán aquí</div>
   </section>
 
   <section class="panel">
-    <div class="panel-title">
-      <h2>Saltos detectados</h2>
-      <span>±1 — ±18</span>
+    <div class="panel-title"><h2>Saltos detectados</h2><span>±1 — ±18</span></div>
+    <div id="jumpGrid" class="jump-grid">
+      <div class="jump-cell" data-magnitude="1"><b>±1</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="2"><b>±2</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="3"><b>±3</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="4"><b>±4</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="5"><b>±5</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="6"><b>±6</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="7"><b>±7</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="8"><b>±8</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="9"><b>±9</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="10"><b>±10</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="11"><b>±11</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="12"><b>±12</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="13"><b>±13</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="14"><b>±14</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="15"><b>±15</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="16"><b>±16</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="17"><b>±17</b><small>0 veces</small></div>
+      <div class="jump-cell" data-magnitude="18"><b>±18</b><small>0 veces</small></div>
     </div>
-    <div id="jumpGrid" class="jump-grid"></div>
   </section>
 
-  <section class="number-panel">
-    <div class="panel-title">
-      <h2>Resultado</h2>
-      <span>Pulsa el número que ha salido</span>
+  <section class="panel number-panel">
+    <div class="panel-title"><h2>Resultado</h2><span>Pulsa el número que ha salido</span></div>
+    <div class="number-grid">
+      <button class="number-btn zero" data-number="0">0</button>
+      <button class="number-btn" data-number="1">1</button><button class="number-btn" data-number="2">2</button>
+      <button class="number-btn" data-number="3">3</button><button class="number-btn" data-number="4">4</button>
+      <button class="number-btn" data-number="5">5</button><button class="number-btn" data-number="6">6</button>
+      <button class="number-btn" data-number="7">7</button><button class="number-btn" data-number="8">8</button>
+      <button class="number-btn" data-number="9">9</button><button class="number-btn" data-number="10">10</button>
+      <button class="number-btn" data-number="11">11</button><button class="number-btn" data-number="12">12</button>
+      <button class="number-btn" data-number="13">13</button><button class="number-btn" data-number="14">14</button>
+      <button class="number-btn" data-number="15">15</button><button class="number-btn" data-number="16">16</button>
+      <button class="number-btn" data-number="17">17</button><button class="number-btn" data-number="18">18</button>
+      <button class="number-btn" data-number="19">19</button><button class="number-btn" data-number="20">20</button>
+      <button class="number-btn" data-number="21">21</button><button class="number-btn" data-number="22">22</button>
+      <button class="number-btn" data-number="23">23</button><button class="number-btn" data-number="24">24</button>
+      <button class="number-btn" data-number="25">25</button><button class="number-btn" data-number="26">26</button>
+      <button class="number-btn" data-number="27">27</button><button class="number-btn" data-number="28">28</button>
+      <button class="number-btn" data-number="29">29</button><button class="number-btn" data-number="30">30</button>
+      <button class="number-btn" data-number="31">31</button><button class="number-btn" data-number="32">32</button>
+      <button class="number-btn" data-number="33">33</button><button class="number-btn" data-number="34">34</button>
+      <button class="number-btn" data-number="35">35</button><button class="number-btn" data-number="36">36</button>
     </div>
-    <div id="numberGrid" class="number-grid" aria-label="Números de la ruleta europea"></div>
   </section>
 </main>
 <script src="app.js"></script>
