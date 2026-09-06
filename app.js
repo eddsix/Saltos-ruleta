@@ -1,88 +1,158 @@
-"use strict";
+const WHEEL = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13,
+  36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14,
+  31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
+];
 
-// Real European roulette wheel order.
-// Forward through this array is positive.
-const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const REDS = new Set([
+  1, 3, 5, 7, 9, 12, 14, 16, 18, 19,
+  21, 23, 25, 27, 30, 32, 34, 36
+]);
 
 let results = [];
 let jumps = [];
-const counts = Array(19).fill(0);
 
-const resultsEl = document.getElementById("results");
-const jumpsEl = document.getElementById("jumps");
-const resultCountEl = document.getElementById("resultCount");
-const jumpCountEl = document.getElementById("jumpCount");
-const clearBtn = document.getElementById("clearHistory");
+const resultHistory = document.getElementById("resultHistory");
+const jumpHistory = document.getElementById("jumpHistory");
+const numberGrid = document.getElementById("numberGrid");
+const detectedGrid = document.getElementById("detectedGrid");
+const resultCount = document.getElementById("resultCount");
+const jumpCount = document.getElementById("jumpCount");
+const undoResult = document.getElementById("undoResult");
+const clearHistory = document.getElementById("clearHistory");
 
-function wheelIndex(n){ return WHEEL.indexOf(n); }
+function colorClass(n) {
+  if (n === 0) return "green";
+  return REDS.has(n) ? "red" : "black";
+}
 
-function getJump(previous, current){
-  const a = wheelIndex(previous);
-  const b = wheelIndex(current);
-  let jump = (b - a + 37) % 37;
-  // Shortest signed circular distance: -18 ... +18.
+function calculateJump(previous, current) {
+  const previousIndex = WHEEL.indexOf(previous);
+  const currentIndex = WHEEL.indexOf(current);
+
+  let jump = currentIndex - previousIndex;
+
   if (jump > 18) jump -= 37;
+  if (jump < -18) jump += 37;
+
   return jump;
 }
 
-function addResult(number){
-  if(results.length > 0){
-    const jump = getJump(results[0], number);
-    jumps.unshift(jump);
-    counts[Math.abs(jump)]++;
+function buildJumpsFromResults() {
+  const rebuilt = [];
+
+  for (let i = 0; i < results.length - 1; i++) {
+    rebuilt.push(calculateJump(results[i + 1], results[i]));
   }
+
+  return rebuilt;
+}
+
+function renderNumberGrid() {
+  numberGrid.innerHTML = "";
+
+  for (let n = 0; n <= 36; n++) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `number-btn ${colorClass(n)}`;
+    button.textContent = n;
+    button.setAttribute("aria-label", `Registrar resultado ${n}`);
+    button.addEventListener("click", () => registerResult(n));
+    numberGrid.appendChild(button);
+  }
+}
+
+function renderResults() {
+  resultHistory.innerHTML = "";
+
+  if (results.length === 0) {
+    resultHistory.className = "result-history empty";
+    const message = document.createElement("span");
+    message.textContent = "Selecciona el número que acaba de salir";
+    resultHistory.appendChild(message);
+  } else {
+    resultHistory.className = "result-history";
+
+    results.forEach(n => {
+      const chip = document.createElement("div");
+      chip.className = `history-number ${colorClass(n)}`;
+      chip.textContent = n;
+      resultHistory.appendChild(chip);
+    });
+  }
+
+  resultCount.textContent = `${results.length} ${results.length === 1 ? "resultado" : "resultados"}`;
+  undoResult.disabled = results.length === 0;
+}
+
+function renderJumps() {
+  jumpHistory.innerHTML = "";
+
+  if (jumps.length === 0) {
+    jumpHistory.className = "jump-history empty";
+    const message = document.createElement("span");
+    message.textContent = "Los saltos aparecerán aquí";
+    jumpHistory.appendChild(message);
+  } else {
+    jumpHistory.className = "jump-history";
+
+    jumps.forEach(jump => {
+      const chip = document.createElement("div");
+      chip.className = `jump-chip ${jump > 0 ? "positive" : jump < 0 ? "negative" : ""}`;
+      chip.textContent = jump > 0 ? `+${jump}` : `${jump}`;
+      jumpHistory.appendChild(chip);
+    });
+  }
+
+  jumpCount.textContent = `${jumps.length} ${jumps.length === 1 ? "salto" : "saltos"}`;
+}
+
+function renderDetected() {
+  detectedGrid.innerHTML = "";
+
+  const detected = new Set(jumps.map(jump => Math.abs(jump)));
+
+  for (let magnitude = 1; magnitude <= 18; magnitude++) {
+    const cell = document.createElement("div");
+    cell.className = "detected-cell";
+
+    if (detected.has(magnitude)) {
+      cell.classList.add("active");
+    }
+
+    cell.textContent = `±${magnitude}`;
+    detectedGrid.appendChild(cell);
+  }
+}
+
+function renderAll() {
+  renderResults();
+  renderJumps();
+  renderDetected();
+}
+
+function registerResult(number) {
   results.unshift(number);
-  render();
+  jumps = buildJumpsFromResults();
+  renderAll();
 }
 
-function render(){
-  if(results.length === 0){
-    resultsEl.className="scroll-row empty";
-    resultsEl.textContent="Pulsa un número para comenzar";
-  }else{
-    resultsEl.className="scroll-row";
-    resultsEl.innerHTML="";
-    results.forEach((n,i)=>{
-      const el=document.createElement("div");
-      el.className="number"+(i===0?" latest":"");
-      el.textContent=n;
-      resultsEl.appendChild(el);
-    });
-  }
-  resultCountEl.textContent=`${results.length} ${results.length===1?"tirada":"tiradas"}`;
+function undoLastResult() {
+  if (results.length === 0) return;
 
-  if(jumps.length === 0){
-    jumpsEl.className="scroll-row empty";
-    jumpsEl.textContent="Los saltos aparecerán aquí";
-  }else{
-    jumpsEl.className="scroll-row";
-    jumpsEl.innerHTML="";
-    jumps.forEach(j=>{
-      const el=document.createElement("div");
-      el.className="jump";
-      el.textContent=j>0?`+${j}`:`${j}`;
-      jumpsEl.appendChild(el);
-    });
-  }
-  jumpCountEl.textContent=`${jumps.length} ${jumps.length===1?"salto":"saltos"}`;
-
-  document.querySelectorAll(".jump-cell").forEach(cell=>{
-    const m=Number(cell.dataset.magnitude);
-    const count=counts[m];
-    cell.classList.toggle("active",count>0);
-    cell.querySelector("small").textContent=`${count} ${count===1?"vez":"veces"}`;
-  });
+  results.shift();
+  jumps = buildJumpsFromResults();
+  renderAll();
 }
 
-document.querySelectorAll(".number-btn").forEach(btn=>{
-  btn.addEventListener("click",()=>addResult(Number(btn.dataset.number)));
-});
+function resetAll() {
+  results = [];
+  jumps = [];
+  renderAll();
+}
 
-clearBtn.addEventListener("click",()=>{
-  results=[];
-  jumps=[];
-  counts.fill(0);
-  render();
-});
+undoResult.addEventListener("click", undoLastResult);
+clearHistory.addEventListener("click", resetAll);
 
-render();
+renderNumberGrid();
+renderAll();
