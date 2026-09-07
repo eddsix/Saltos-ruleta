@@ -7,7 +7,7 @@ const LEGACY_KEYS=["europeanRouletteJumpTracker.v10","europeanRouletteJumpTracke
 let results=[],jumps=[];
 const $=id=>document.getElementById(id);
 const resultHistory=$("resultHistory"),jumpHistory=$("jumpHistory"),numberGrid=$("numberGrid"),detectedGrid=$("detectedGrid"),resultCount=$("resultCount"),jumpCount=$("jumpCount"),detectedCount=$("detectedCount"),frequencyList=$("frequencyList"),frequencyCount=$("frequencyCount"),undoResult=$("undoResult"),clearHistory=$("clearHistory"),referenceNumbers=$("referenceNumbers"),referenceJump=$("referenceJump");
-const analysisWindow=$("analysisWindow"),analysisSummary=$("analysisSummary"),directionStats=$("directionStats"),recentFrequency=$("recentFrequency"),analysisStatus=$("analysisStatus"),selectedJumpGrid=$("selectedJumpGrid"),selectedJumpList=$("selectedJumpList"),selectedJumpMetric=$("selectedJumpMetric");
+const selectedJumpGrid=$("selectedJumpGrid"),selectedJumpList=$("selectedJumpList"),selectedJumpMetric=$("selectedJumpMetric");
 let selectedMagnitude=1;
 function color(n){return n===0?"green":REDS.has(n)?"red":"black"}
 function calculateJump(previous,current){const previousIndex=WHEEL.indexOf(previous),currentIndex=WHEEL.indexOf(current);if(previousIndex===-1||currentIndex===-1)return null;let value=currentIndex-previousIndex;if(value>18)value-=37;if(value<-18)value+=37;return value}
@@ -91,12 +91,6 @@ function renderReference(){
   referenceNumbers.append(minusSign,minusNumber,arrow,plusNumber,plusSign);
   referenceNumbers.appendChild(wrap);
 }
-function getWindowJumps(){
-  if(!analysisWindow)return jumps.slice();
-  if(analysisWindow.value==="all")return jumps.slice();
-  const limit=Number(analysisWindow.value);
-  return Number.isFinite(limit)?jumps.slice(0,limit):jumps.slice();
-}
 function getReferenceForState(stateResults){
   if(!Array.isArray(stateResults)||stateResults.length<2)return null;
   const stateJumps=[];
@@ -154,36 +148,7 @@ function renderSelectedJump(){
     row.append(resultEl,minusLabel,minusEl,plusLabel,plusEl);selectedJumpList.appendChild(row);
   });
 }
-function renderAnalysis(){
-  if(!analysisSummary||!directionStats||!recentFrequency||!analysisStatus)return;
-  const data=getWindowJumps();
-  const selected=analysisWindow?analysisWindow.value:"all";
-  const windowLabel=selected==="all"?"Todo":`Últimos ${selected}`;
-  const evaluations=getReferenceEvaluations();
-  const winCount=evaluations.filter(e=>e.win).length;
-  const lossCount=evaluations.length-winCount;
-  analysisSummary.innerHTML=`<strong>${results.length}</strong> resultados · <strong>${jumps.length}</strong> saltos · <strong>${data.length}</strong> analizados · ${windowLabel}`;
-  if(!data.length){
-    directionStats.textContent="Sin saltos suficientes";
-    recentFrequency.textContent="Sin datos";
-    analysisStatus.textContent="Guardado automático activo";
-    return;
-  }
-  const cw=data.filter(j=>j>0).length;
-  const ccw=data.filter(j=>j<0).length;
-  const zero=data.filter(j=>j===0).length;
-  const directional=cw+ccw;
-  const cwPct=directional?(cw/directional*100):0;
-  const ccwPct=directional?(ccw/directional*100):0;
-  directionStats.innerHTML=`CW <strong>${cw}</strong> (${cwPct.toFixed(1)}%) · CCW <strong>${ccw}</strong> (${ccwPct.toFixed(1)}%)${zero?` · MISMO NÚMERO <strong>${zero}</strong>`:""}`;
-  const counts=new Map();
-  data.forEach(j=>{const n=Math.abs(j);if(n>=1&&n<=18)counts.set(n,(counts.get(n)||0)+1)});
-  const top=[...counts.entries()].sort((a,b)=>b[1]-a[1]||a[0]-b[0]).slice(0,5);
-  recentFrequency.innerHTML=(top.length?top.map(([n,c])=>`<span class="analysis-pill">±${n} <b>${c}</b></span>`).join(""):"Sin saltos ±1–±18")+`<div class="reference-performance"><span>REFERENCIA</span><strong>${winCount} WIN</strong><strong>${lossCount} LOSS</strong>${evaluations.length?`<span>${(winCount/evaluations.length*100).toFixed(1)}% WIN</span>`:"<span>Pendiente</span>"}</div>`;
-  analysisStatus.textContent="Guardado automático activo";
-}
-function render(){renderResults();renderJumps();renderDetected();renderFrequency();renderReference();renderSelectedJump();renderAnalysis()}
+function render(){renderResults();renderJumps();renderDetected();renderFrequency();renderReference();renderSelectedJump()}
 undoResult.addEventListener("click",()=>{if(results.length){results.shift();jumps=rebuildJumps();saveData();render()}});
 clearHistory.addEventListener("click",()=>{results=[];jumps=[];saveData();render()});
-if(analysisWindow)analysisWindow.addEventListener("change",renderAnalysis);
 (async function init(){await loadData();renderNumbers();render()})();
