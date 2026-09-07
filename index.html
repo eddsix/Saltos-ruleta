@@ -37,9 +37,16 @@
     <span id="selectedJumpMetric" class="metric">±1 seleccionado</span>
   </div>
   <div class="selected-jump-controls">
-    <div id="selectedJumpGrid" class="selected-jump-grid"></div>
+    <div class="selected-number-control">
+      <label for="selectedResultNumber">NÚMERO</label>
+      <input id="selectedResultNumber" type="number" min="0" max="36" value="0" inputmode="numeric" aria-label="Número a consultar">
+    </div>
+    <div class="selected-jump-picker">
+      <span class="selected-picker-label">±</span>
+      <div id="selectedJumpGrid" class="selected-jump-grid"></div>
+    </div>
   </div>
-  <div id="selectedJumpList" class="selected-jump-list"></div>
+  <div id="selectedJumpResult" class="selected-jump-result"></div>
 </section>
 
 <section class="panel">
