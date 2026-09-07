@@ -1,108 +1,189 @@
 const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 const REDS=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const STORAGE_KEY="europeanRouletteJumpTracker.results";
+const DB_NAME="EuropeanRouletteJumpTrackerDB";
+const DB_STORE="roulette";
+const LEGACY_KEYS=["europeanRouletteJumpTracker.v10","europeanRouletteJumpTracker.v13","europeanRouletteJumpTracker.v14"];
 let results=[],jumps=[];
 const $=id=>document.getElementById(id);
-const resultHistory=$("resultHistory"),jumpHistory=$("jumpHistory"),numberGrid=$("numberGrid"),detectedGrid=$("detectedGrid"),resultCount=$("resultCount"),jumpCount=$("jumpCount"),detectedCount=$("detectedCount"),frequencyList=$("frequencyList"),frequencyCount=$("frequencyCount"),undoResult=$("undoResult"),clearHistory=$("clearHistory");
+const resultHistory=$("resultHistory"),jumpHistory=$("jumpHistory"),numberGrid=$("numberGrid"),detectedGrid=$("detectedGrid"),resultCount=$("resultCount"),jumpCount=$("jumpCount"),detectedCount=$("detectedCount"),frequencyList=$("frequencyList"),frequencyCount=$("frequencyCount"),undoResult=$("undoResult"),clearHistory=$("clearHistory"),referenceNumbers=$("referenceNumbers"),referenceJump=$("referenceJump");
+const analysisWindow=$("analysisWindow"),analysisSummary=$("analysisSummary"),directionStats=$("directionStats"),recentFrequency=$("recentFrequency"),analysisStatus=$("analysisStatus"),selectedJumpGrid=$("selectedJumpGrid"),selectedJumpList=$("selectedJumpList"),selectedJumpMetric=$("selectedJumpMetric");
+let selectedMagnitude=1;
 function color(n){return n===0?"green":REDS.has(n)?"red":"black"}
-function calculateJump(previous, current) {
-  const previousIndex = WHEEL.indexOf(previous);
-  const currentIndex = WHEEL.indexOf(current);
-
-  if (previousIndex === -1 || currentIndex === -1) return null;
-
-  let value = currentIndex - previousIndex;
-
-  if (value > 18) value -= 37;
-  if (value < -18) value += 37;
-
-  return value;
+function calculateJump(previous,current){const previousIndex=WHEEL.indexOf(previous),currentIndex=WHEEL.indexOf(current);if(previousIndex===-1||currentIndex===-1)return null;let value=currentIndex-previousIndex;if(value>18)value-=37;if(value<-18)value+=37;return value}
+function rebuildJumps(){const rebuilt=[];for(let i=0;i<results.length-1;i++){const value=calculateJump(results[i+1],results[i]);if(value!==null)rebuilt.push(value)}return rebuilt}
+function openDatabase(){
+  return new Promise((resolve,reject)=>{
+    if(!("indexedDB" in window)){reject(new Error("IndexedDB no disponible"));return}
+    const request=indexedDB.open(DB_NAME,1);
+    request.onupgradeneeded=()=>{
+      const db=request.result;
+      if(!db.objectStoreNames.contains(DB_STORE))db.createObjectStore(DB_STORE);
+    };
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error);
+  });
 }
-
-function rebuildJumps() {
-  const rebuilt = [];
-
-  for (let i = 0; i < results.length - 1; i++) {
-    const value = calculateJump(results[i + 1], results[i]);
-    if (value !== null) rebuilt.push(value);
+async function saveIndexedDB(){
+  const db=await openDatabase();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(DB_STORE,"readwrite");
+    tx.objectStore(DB_STORE).put({results:[...results]},"current");
+    tx.oncomplete=()=>{db.close();resolve()};
+    tx.onerror=()=>{db.close();reject(tx.error)};
+  });
+}
+async function loadIndexedDB(){
+  const db=await openDatabase();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(DB_STORE,"readonly");
+    const req=tx.objectStore(DB_STORE).get("current");
+    req.onsuccess=()=>{const value=req.result;db.close();resolve(value)};
+    req.onerror=()=>{db.close();reject(req.error)};
+  });
+}
+function validResults(value){return Array.isArray(value)?value.map(Number).filter(n=>Number.isInteger(n)&&n>=0&&n<=36):[]}
+function saveData(){
+  const payload={version:15,results:[...results]};
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(payload))}catch(e){}
+  saveIndexedDB().catch(()=>{});
+}
+async function loadData(){
+  let loaded=null;
+  try{
+    const data=await loadIndexedDB();
+    if(data&&Array.isArray(data.results))loaded=validResults(data.results);
+  }catch(e){}
+  if(loaded===null){
+    try{
+      const raw=localStorage.getItem(STORAGE_KEY);
+      if(raw){const data=JSON.parse(raw);if(Array.isArray(data.results))loaded=validResults(data.results)}
+    }catch(e){}
   }
-
-  return rebuilt;
+  results=loaded||[];
+  jumps=rebuildJumps();
 }
-
-function renderNumbers(){numberGrid.innerHTML="";for(let n=0;n<=36;n++){let b=document.createElement("button");b.className=`number-btn ${color(n)}`;b.textContent=n;b.addEventListener("click",()=>{results.unshift(n);jumps=rebuildJumps();render()});numberGrid.appendChild(b)}}
+function renderNumbers(){numberGrid.innerHTML="";for(let n=0;n<=36;n++){let b=document.createElement("button");b.className=`number-btn ${color(n)}`;b.textContent=n;b.addEventListener("click",()=>{results.unshift(n);jumps=rebuildJumps();saveData();render()});numberGrid.appendChild(b)}}
 function renderResults(){resultHistory.innerHTML="";if(!results.length){resultHistory.className="history empty";resultHistory.textContent="Pulsa un número para registrar el resultado"}else{resultHistory.className="history";results.forEach(n=>{let x=document.createElement("div");x.className=`history-number ${color(n)}`;x.textContent=n;resultHistory.appendChild(x)})}resultCount.textContent=`${results.length} ${results.length===1?"resultado":"resultados"}`;undoResult.disabled=!results.length}
 function renderJumps(){jumpHistory.innerHTML="";if(!jumps.length){jumpHistory.className="jump-history empty";jumpHistory.textContent="Los saltos aparecerán aquí al registrar dos resultados"}else{jumpHistory.className="jump-history";jumps.forEach(j=>{let x=document.createElement("div");x.className=`jump-chip ${j>0?"positive":""}`;x.textContent=j>0?`+${j}`:j;jumpHistory.appendChild(x)})}jumpCount.textContent=`${jumps.length} ${jumps.length===1?"salto":"saltos"}`}
-function renderDetected() {
-  detectedGrid.innerHTML = "";
-
-  const detected = new Set();
-  jumps.forEach(value => {
-    const magnitude = Math.abs(value);
-    if (magnitude >= 1 && magnitude <= 18) detected.add(magnitude);
-  });
-
-  for (let n = 1; n <= 18; n++) {
-    const cell = document.createElement("div");
-    cell.className = "detected-cell";
-    cell.textContent = `±${n}`;
-    if (detected.has(n)) cell.classList.add("active");
-    detectedGrid.appendChild(cell);
-  }
-
-  detectedCount.textContent = `${detected.size} / 18`;
-}
+function renderDetected(){detectedGrid.innerHTML="";const detected=new Set();jumps.forEach(value=>{const magnitude=Math.abs(value);if(magnitude>=1&&magnitude<=18)detected.add(magnitude)});for(let n=1;n<=18;n++){const cell=document.createElement("div");cell.className="detected-cell";cell.textContent=`±${n}`;if(detected.has(n))cell.classList.add("active");detectedGrid.appendChild(cell)}detectedCount.textContent=`${detected.size} / 18`}
 function renderFrequency(){frequencyList.innerHTML="";if(!jumps.length){frequencyList.className="frequency-list empty";frequencyList.textContent="La frecuencia aparecerá aquí al registrar saltos";frequencyCount.textContent="0 saltos registrados";return}let m=new Map;jumps.forEach(j=>{let n=Math.abs(j);m.set(n,(m.get(n)||0)+1)});let a=[...m.entries()].sort((x,y)=>y[1]-x[1]||x[0]-y[0]),max=a[0][1];frequencyList.className="frequency-list";a.forEach(([n,c],i)=>{let r=document.createElement("div");r.className="frequency-row";const since=jumps.findIndex(j=>Math.abs(j)===n);r.innerHTML=`<div class="frequency-rank">#${i+1}</div><div class="frequency-jump">±${n}</div><div class="frequency-bar-wrap"><div class="frequency-bar" style="width:${c/max*100}%"></div></div><div class="frequency-value">${c}<span>${c===1?"vez":"veces"}</span></div><div class="frequency-since">${since} ${since===1?"tirada":"tiradas"} sin salir</div>`;frequencyList.appendChild(r)});frequencyCount.textContent=`${jumps.length} ${jumps.length===1?"salto registrado":"saltos registrados"}`}
-function renderReference() {
-  referenceNumbers.innerHTML = "";
-
-  if (!results.length || !jumps.length) {
-    referenceJump.textContent = "Sin referencia";
-    referenceNumbers.textContent = "Registra al menos dos resultados";
+function renderReference(){
+  referenceNumbers.innerHTML="";
+  const evaluations=getReferenceEvaluations();
+  if(!results.length||!jumps.length){
+    referenceJump.textContent="Sin referencia";
+    referenceNumbers.textContent="Registra al menos dos resultados";
     return;
   }
-
-  const counts = new Map();
-  jumps.forEach(value => {
-    const magnitude = Math.abs(value);
-    counts.set(magnitude, (counts.get(magnitude) || 0) + 1);
+  const ref=getReferenceForState(results);
+  if(!ref){referenceJump.textContent="Sin referencia";referenceNumbers.textContent="Registra al menos dos resultados";return;}
+  referenceJump.textContent=`±${ref.magnitude} · nº 1`;
+  const minusSign=document.createElement("span");minusSign.className="reference-sign";minusSign.textContent="−";
+  const minusNumber=document.createElement("div");minusNumber.className=`reference-number ${color(ref.minus)}`;minusNumber.textContent=ref.minus;
+  const arrow=document.createElement("span");arrow.className="reference-arrow";arrow.textContent=`↔  ${ref.current}  ↔`;
+  const plusNumber=document.createElement("div");plusNumber.className=`reference-number ${color(ref.plus)}`;plusNumber.textContent=ref.plus;
+  const plusSign=document.createElement("span");plusSign.className="reference-sign";plusSign.textContent="+";
+  const wrap=document.createElement("div");wrap.className="reference-result-wrap";
+  const label=document.createElement("span");label.className="reference-result-label";label.textContent=evaluations.length?"Última referencia evaluada":"Referencia pendiente";
+  const badge=document.createElement("strong");badge.className=`reference-result-badge ${evaluations.length&&evaluations[0].win?"win":"loss"}`;badge.textContent=evaluations.length?(evaluations[0].win?"WIN":"LOSS"):"PENDIENTE";
+  wrap.append(label,badge);
+  referenceNumbers.append(minusSign,minusNumber,arrow,plusNumber,plusSign);
+  referenceNumbers.appendChild(wrap);
+}
+function getWindowJumps(){
+  if(!analysisWindow)return jumps.slice();
+  if(analysisWindow.value==="all")return jumps.slice();
+  const limit=Number(analysisWindow.value);
+  return Number.isFinite(limit)?jumps.slice(0,limit):jumps.slice();
+}
+function getReferenceForState(stateResults){
+  if(!Array.isArray(stateResults)||stateResults.length<2)return null;
+  const stateJumps=[];
+  for(let i=0;i<stateResults.length-1;i++){
+    const value=calculateJump(stateResults[i+1],stateResults[i]);
+    if(value!==null)stateJumps.push(value);
+  }
+  if(!stateJumps.length)return null;
+  const counts=new Map();
+  stateJumps.forEach(value=>{const magnitude=Math.abs(value);counts.set(magnitude,(counts.get(magnitude)||0)+1)});
+  const ordered=[...counts.entries()].sort((a,b)=>b[1]-a[1]||a[0]-b[0]);
+  const magnitude=ordered[0][0];
+  const current=stateResults[0];
+  const currentIndex=WHEEL.indexOf(current);
+  if(currentIndex<0)return null;
+  return {magnitude,current,plus:WHEEL[(currentIndex+magnitude)%37],minus:WHEEL[(currentIndex-magnitude+37)%37]};
+}
+function getReferenceEvaluations(){
+  const evaluations=[];
+  for(let i=1;i<results.length-1;i++){
+    const ref=getReferenceForState(results.slice(i));
+    if(!ref)continue;
+    const nextResult=results[i-1];
+    const win=nextResult===ref.plus||nextResult===ref.minus;
+    evaluations.push({reference:ref,nextResult,win});
+  }
+  return evaluations;
+}
+function renderSelectedJump(){
+  if(!selectedJumpGrid||!selectedJumpList)return;
+  selectedJumpGrid.innerHTML="";
+  for(let n=1;n<=18;n++){
+    const b=document.createElement("button");
+    b.type="button";
+    b.className=`selected-jump-btn ${n===selectedMagnitude?"active":""}`;
+    b.textContent=`±${n}`;
+    b.addEventListener("click",()=>{selectedMagnitude=n;renderSelectedJump()});
+    selectedJumpGrid.appendChild(b);
+  }
+  selectedJumpMetric.textContent=`±${selectedMagnitude} seleccionado`;
+  selectedJumpList.innerHTML="";
+  if(!results.length){
+    const empty=document.createElement("div");empty.className="selected-jump-empty";empty.textContent="Registra resultados para ver su ± seleccionado";selectedJumpList.appendChild(empty);return;
+  }
+  results.forEach(result=>{
+    const idx=WHEEL.indexOf(result);
+    const plus=WHEEL[(idx+selectedMagnitude)%37];
+    const minus=WHEEL[(idx-selectedMagnitude+37)%37];
+    const row=document.createElement("div");row.className="selected-jump-row";
+    const resultEl=document.createElement("div");resultEl.className=`selected-result ${color(result)}`;resultEl.textContent=result;
+    const minusLabel=document.createElement("div");minusLabel.className="selected-side";minusLabel.textContent="−";
+    const minusEl=document.createElement("div");minusEl.className="selected-number";minusEl.textContent=minus;
+    const plusLabel=document.createElement("div");plusLabel.className="selected-side";plusLabel.textContent="+";
+    const plusEl=document.createElement("div");plusEl.className="selected-number";plusEl.textContent=plus;
+    row.append(resultEl,minusLabel,minusEl,plusLabel,plusEl);selectedJumpList.appendChild(row);
   });
-
-  const ordered = [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0] - b[0]);
-
-  const magnitude = ordered[0][0];
-  const current = results[0];
-  const currentIndex = WHEEL.indexOf(current);
-
-  const plus = WHEEL[(currentIndex + magnitude) % 37];
-  const minus = WHEEL[(currentIndex - magnitude + 37) % 37];
-
-  referenceJump.textContent = `±${magnitude} · nº 1`;
-
-  const minusSign = document.createElement("span");
-  minusSign.className = "reference-sign";
-  minusSign.textContent = "−";
-
-  const minusNumber = document.createElement("div");
-  minusNumber.className = `reference-number ${color(minus)}`;
-  minusNumber.textContent = minus;
-
-  const arrow = document.createElement("span");
-  arrow.className = "reference-arrow";
-  arrow.textContent = `↔  ${current}  ↔`;
-
-  const plusNumber = document.createElement("div");
-  plusNumber.className = `reference-number ${color(plus)}`;
-  plusNumber.textContent = plus;
-
-  const plusSign = document.createElement("span");
-  plusSign.className = "reference-sign";
-  plusSign.textContent = "+";
-
-  referenceNumbers.append(minusSign, minusNumber, arrow, plusNumber, plusSign);
-} 
-
-function render(){renderResults();renderJumps();renderDetected();renderFrequency();renderReference()}
-undoResult.addEventListener("click",()=>{if(results.length){results.shift();jumps=rebuildJumps();render()}});
-clearHistory.addEventListener("click",()=>{results=[];jumps=[];render()});
-renderNumbers();render();
+}
+function renderAnalysis(){
+  if(!analysisSummary||!directionStats||!recentFrequency||!analysisStatus)return;
+  const data=getWindowJumps();
+  const selected=analysisWindow?analysisWindow.value:"all";
+  const windowLabel=selected==="all"?"Todo":`Últimos ${selected}`;
+  const evaluations=getReferenceEvaluations();
+  const winCount=evaluations.filter(e=>e.win).length;
+  const lossCount=evaluations.length-winCount;
+  analysisSummary.innerHTML=`<strong>${results.length}</strong> resultados · <strong>${jumps.length}</strong> saltos · <strong>${data.length}</strong> analizados · ${windowLabel}`;
+  if(!data.length){
+    directionStats.textContent="Sin saltos suficientes";
+    recentFrequency.textContent="Sin datos";
+    analysisStatus.textContent="Guardado automático activo";
+    return;
+  }
+  const cw=data.filter(j=>j>0).length;
+  const ccw=data.filter(j=>j<0).length;
+  const zero=data.filter(j=>j===0).length;
+  const directional=cw+ccw;
+  const cwPct=directional?(cw/directional*100):0;
+  const ccwPct=directional?(ccw/directional*100):0;
+  directionStats.innerHTML=`CW <strong>${cw}</strong> (${cwPct.toFixed(1)}%) · CCW <strong>${ccw}</strong> (${ccwPct.toFixed(1)}%)${zero?` · MISMO NÚMERO <strong>${zero}</strong>`:""}`;
+  const counts=new Map();
+  data.forEach(j=>{const n=Math.abs(j);if(n>=1&&n<=18)counts.set(n,(counts.get(n)||0)+1)});
+  const top=[...counts.entries()].sort((a,b)=>b[1]-a[1]||a[0]-b[0]).slice(0,5);
+  recentFrequency.innerHTML=(top.length?top.map(([n,c])=>`<span class="analysis-pill">±${n} <b>${c}</b></span>`).join(""):"Sin saltos ±1–±18")+`<div class="reference-performance"><span>REFERENCIA</span><strong>${winCount} WIN</strong><strong>${lossCount} LOSS</strong>${evaluations.length?`<span>${(winCount/evaluations.length*100).toFixed(1)}% WIN</span>`:"<span>Pendiente</span>"}</div>`;
+  analysisStatus.textContent="Guardado automático activo";
+}
+function render(){renderResults();renderJumps();renderDetected();renderFrequency();renderReference();renderSelectedJump();renderAnalysis()}
+undoResult.addEventListener("click",()=>{if(results.length){results.shift();jumps=rebuildJumps();saveData();render()}});
+clearHistory.addEventListener("click",()=>{results=[];jumps=[];saveData();render()});
+if(analysisWindow)analysisWindow.addEventListener("change",renderAnalysis);
+(async function init(){await loadData();renderNumbers();render()})();
