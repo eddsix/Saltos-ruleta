@@ -7,9 +7,8 @@ const LEGACY_KEYS=["europeanRouletteJumpTracker.v10","europeanRouletteJumpTracke
 let results=[],jumps=[];
 const $=id=>document.getElementById(id);
 const resultHistory=$("resultHistory"),jumpHistory=$("jumpHistory"),numberGrid=$("numberGrid"),detectedGrid=$("detectedGrid"),resultCount=$("resultCount"),jumpCount=$("jumpCount"),detectedCount=$("detectedCount"),frequencyList=$("frequencyList"),frequencyCount=$("frequencyCount"),undoResult=$("undoResult"),clearHistory=$("clearHistory"),referenceNumbers=$("referenceNumbers"),referenceJump=$("referenceJump");
-const selectedJumpGrid=$("selectedJumpGrid"),selectedJumpResult=$("selectedJumpResult"),selectedJumpMetric=$("selectedJumpMetric"),selectedResultNumber=$("selectedResultNumber");
+const selectedJumpGrid=$("selectedJumpGrid"),selectedJumpResult=$("selectedJumpResult"),selectedJumpMetric=$("selectedJumpMetric");
 let selectedMagnitude=1;
-let selectedResult=0;
 function color(n){return n===0?"green":REDS.has(n)?"red":"black"}
 function calculateJump(previous,current){const previousIndex=WHEEL.indexOf(previous),currentIndex=WHEEL.indexOf(current);if(previousIndex===-1||currentIndex===-1)return null;let value=currentIndex-previousIndex;if(value>18)value-=37;if(value<-18)value+=37;return value}
 function rebuildJumps(){const rebuilt=[];for(let i=0;i<results.length-1;i++){const value=calculateJump(results[i+1],results[i]);if(value!==null)rebuilt.push(value)}return rebuilt}
@@ -124,7 +123,7 @@ function renderSelectedJump(){
   if(!selectedJumpGrid||!selectedJumpResult)return;
   selectedJumpGrid.innerHTML="";
   for(let n=1;n<=18;n++){
-    const b=document.createElement("button");
+    let b=document.createElement("button");
     b.type="button";
     b.className=`selected-jump-btn ${n===selectedMagnitude?"active":""}`;
     b.textContent=`±${n}`;
@@ -132,11 +131,15 @@ function renderSelectedJump(){
     selectedJumpGrid.appendChild(b);
   }
   selectedJumpMetric.textContent=`±${selectedMagnitude} seleccionado`;
+  const selectedResult=results[0];
+  selectedJumpResult.innerHTML="";
+  if(selectedResult===undefined){
+    selectedJumpResult.textContent="Registra un resultado para consultar sus posiciones";
+    return;
+  }
   const idx=WHEEL.indexOf(selectedResult);
-  if(idx<0){selectedJumpResult.innerHTML="";return;}
   const plus=WHEEL[(idx+selectedMagnitude)%37];
   const minus=WHEEL[(idx-selectedMagnitude+37)%37];
-  selectedJumpResult.innerHTML="";
   const query=document.createElement("div");query.className="selected-query";
   const source=document.createElement("div");source.className=`selected-result ${color(selectedResult)}`;source.textContent=selectedResult;
   const label=document.createElement("span");label.className="selected-query-label";label.textContent=`RESULTADO ±${selectedMagnitude}`;
@@ -151,10 +154,6 @@ function renderSelectedJump(){
   plusWrap.append(plusSign,plusEl);
   selectedJumpResult.append(query,minusWrap,plusWrap);
 }
-selectedResultNumber.addEventListener("input",()=>{
-  const value=Number(selectedResultNumber.value);
-  if(Number.isInteger(value)&&value>=0&&value<=36){selectedResult=value;renderSelectedJump()}
-});
 
 function render(){renderResults();renderJumps();renderDetected();renderFrequency();renderReference();renderSelectedJump()}
 undoResult.addEventListener("click",()=>{if(results.length){results.shift();jumps=rebuildJumps();saveData();render()}});
