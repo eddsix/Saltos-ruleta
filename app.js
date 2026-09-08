@@ -70,6 +70,8 @@ function renderDetected(){detectedGrid.innerHTML="";const detected=new Set();jum
 function renderFrequency(){frequencyList.innerHTML="";if(!jumps.length){frequencyList.className="frequency-list empty";frequencyList.textContent="La frecuencia aparecerá aquí al registrar saltos";frequencyCount.textContent="0 saltos registrados";return}let m=new Map;jumps.forEach(j=>{let n=Math.abs(j);m.set(n,(m.get(n)||0)+1)});let a=[...m.entries()].sort((x,y)=>y[1]-x[1]||x[0]-y[0]),max=a[0][1];frequencyList.className="frequency-list";a.forEach(([n,c],i)=>{let r=document.createElement("div");r.className="frequency-row";const since=jumps.findIndex(j=>Math.abs(j)===n);r.innerHTML=`<div class="frequency-rank">#${i+1}</div><div class="frequency-jump">±${n}</div><div class="frequency-bar-wrap"><div class="frequency-bar" style="width:${c/max*100}%"></div></div><div class="frequency-value">${c}<span>${c===1?"vez":"veces"}</span></div><div class="frequency-since">${since} ${since===1?"tirada":"tiradas"} sin salir</div>`;frequencyList.appendChild(r)});frequencyCount.textContent=`${jumps.length} ${jumps.length===1?"salto registrado":"saltos registrados"}`}
 function renderReference(){
   referenceNumbers.innerHTML="";
+  const average20El=$("referenceAverage20");
+  if(average20El) average20El.innerHTML="";
   const evaluations=getReferenceEvaluations();
   if(!results.length||!jumps.length){
     referenceJump.textContent="Sin referencia";
@@ -90,6 +92,19 @@ function renderReference(){
   wrap.append(label,badge);
   referenceNumbers.append(minusSign,minusNumber,arrow,plusNumber,plusSign);
   referenceNumbers.appendChild(wrap);
+  if(average20El){
+    const recent20=jumps.slice(0,20).map(Math.abs);
+    if(recent20.length){
+      const avg=recent20.reduce((a,b)=>a+b,0)/recent20.length;
+      const magnitude=Math.max(1,Math.min(18,Math.round(avg)));
+      const idx=WHEEL.indexOf(ref.current);
+      const avgPlus=WHEEL[(idx+magnitude)%37];
+      const avgMinus=WHEEL[(idx-magnitude+37)%37];
+      average20El.innerHTML=`<div class="reference-average20-label">MAGNITUD MEDIA · ÚLTIMOS ${recent20.length}</div><div class="reference-average20-main"><strong>±${magnitude}</strong><span>(${avg.toFixed(1)})</span><span class="reference-average20-arrow">→</span><b class="${color(avgMinus)}">${avgMinus}</b><span>/</span><b class="${color(avgPlus)}">${avgPlus}</b></div>`;
+    }else{
+      average20El.textContent="Se necesitan saltos para calcular la media";
+    }
+  }
 }
 function getReferenceForState(stateResults){
   if(!Array.isArray(stateResults)||stateResults.length<2)return null;
