@@ -80,7 +80,7 @@ function renderReference(){
   }
   const ref=getReferenceForState(results);
   if(!ref){referenceJump.textContent="Sin referencia";referenceNumbers.textContent="Registra al menos dos resultados";return;}
-  referenceJump.textContent=`±${ref.magnitude} · nº 1`;
+  referenceJump.textContent=`±${ref.magnitude} · media 3`;
   const minusSign=document.createElement("span");minusSign.className="reference-sign";minusSign.textContent="−";
   const minusNumber=document.createElement("div");minusNumber.className=`reference-number ${color(ref.minus)}`;minusNumber.textContent=ref.minus;
   const arrow=document.createElement("span");arrow.className="reference-arrow";arrow.textContent=`↔  ${ref.current}  ↔`;
@@ -109,8 +109,9 @@ function getReferenceForState(stateResults){
     if(value!==null)stateJumps.push(value);
   }
   if(!stateJumps.length)return null;
-  const recent3=stateJumps.slice(0,3).map(Math.abs);
-  const magnitude=Math.max(1,Math.min(18,Math.round(recent3.reduce((a,b)=>a+b,0)/recent3.length)));
+  const recent3=stateJumps.slice(0,3).map(value=>Math.abs(value));
+  const average3=recent3.reduce((sum,value)=>sum+value,0)/recent3.length;
+  const magnitude=Math.max(1,Math.min(18,Math.round(average3)));
   const current=stateResults[0];
   const currentIndex=WHEEL.indexOf(current);
   if(currentIndex<0)return null;
