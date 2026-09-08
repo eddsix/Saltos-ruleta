@@ -8,6 +8,7 @@ let results=[],jumps=[];
 const $=id=>document.getElementById(id);
 const resultHistory=$("resultHistory"),jumpHistory=$("jumpHistory"),numberGrid=$("numberGrid"),detectedGrid=$("detectedGrid"),resultCount=$("resultCount"),jumpCount=$("jumpCount"),detectedCount=$("detectedCount"),frequencyList=$("frequencyList"),frequencyCount=$("frequencyCount"),undoResult=$("undoResult"),clearHistory=$("clearHistory"),referenceNumbers=$("referenceNumbers"),referenceJump=$("referenceJump");
 const selectedJumpGrid=$("selectedJumpGrid"),selectedJumpResult=$("selectedJumpResult"),selectedJumpMetric=$("selectedJumpMetric");
+const winlossSummary=$("winlossSummary"),winCountEl=$("winCount"),lossCountEl=$("lossCount"),winRateEl=$("winRate"),currentRoundEl=$("currentRound"),winlossHistory=$("winlossHistory");
 let selectedMagnitude=1;
 function color(n){return n===0?"green":REDS.has(n)?"red":"black"}
 function calculateJump(previous,current){const previousIndex=WHEEL.indexOf(previous),currentIndex=WHEEL.indexOf(current);if(previousIndex===-1||currentIndex===-1)return null;let value=currentIndex-previousIndex;if(value>18)value-=37;if(value<-18)value+=37;return value}
@@ -153,7 +154,67 @@ function renderSelectedJump(){
   selectedJumpResult.append(query,minusWrap,plusWrap);
 }
 
-function render(){renderResults();renderJumps();renderDetected();renderFrequency();renderReference();renderSelectedJump()}
+function getAverage20ForState(stateResults){
+  if(!Array.isArray(stateResults)||stateResults.length<2)return null;
+  const stateJumps=[];
+  for(let i=0;i<stateResults.length-1;i++){
+    const value=calculateJump(stateResults[i+1],stateResults[i]);
+    if(value!==null)stateJumps.push(value);
+  }
+  if(!stateJumps.length)return null;
+  const recent=stateJumps.slice(0,20).map(Math.abs);
+  const avg=recent.reduce((a,b)=>a+b,0)/recent.length;
+  return Math.max(1,Math.min(18,Math.round(avg)));
+}
+function getTargets(number,magnitude){
+  const idx=WHEEL.indexOf(number);
+  if(idx<0||!magnitude)return [];
+  const plus=WHEEL[(idx+magnitude)%37];
+  const minus=WHEEL[(idx-magnitude+37)%37];
+  const neighbors=new Set([WHEEL[(idx+1)%37],WHEEL[(idx-1+37)%37]]);
+  return [number,...neighbors];
+}
+function buildWinLossRounds(){
+  const rounds=[];
+  for(let i=1;i<results.length;i++){
+    const state=results.slice(i);
+    if(state.length<2)continue;
+    const actualRef=getReferenceForState(state);
+    const avgMag=getAverage20ForState(state);
+    if(!actualRef||!avgMag)continue;
+    const targets=new Set();
+    [actualRef.minus,actualRef.plus].forEach(n=>getTargets(n,1).forEach(v=>targets.add(v)));
+    const idx=WHEEL.indexOf(state[0]);
+    const avgMinus=WHEEL[(idx-avgMag+37)%37],avgPlus=WHEEL[(idx+avgMag)%37];
+    [avgMinus,avgPlus].forEach(n=>getTargets(n,1).forEach(v=>targets.add(v)));
+    const outcome=targets.has(results[i-1])?'WIN':'LOSS';
+    rounds.push({reference:state[0],next:results[i-1],refMagnitude:actualRef.magnitude,refNumbers:[actualRef.minus,actualRef.plus],avgMagnitude:avgMag,avgNumbers:[avgMinus,avgPlus],targets:[...targets],outcome});
+  }
+  return rounds;
+}
+function renderWinLoss(){
+  if(!winlossHistory)return;
+  const rounds=buildWinLossRounds();
+  const wins=rounds.filter(r=>r.outcome==='WIN').length;
+  const losses=rounds.length-wins;
+  winCountEl.textContent=wins; lossCountEl.textContent=losses;
+  winRateEl.textContent=rounds.length?`${(wins/rounds.length*100).toFixed(1)}%`:'—';
+  winlossSummary.textContent=rounds.length?`${rounds.length} ${rounds.length===1?'ronda':'rondas'}`:'Sin rondas';
+  currentRoundEl.textContent=results.length>0?'PENDIENTE':'—';
+  winlossHistory.innerHTML='';
+  if(!rounds.length){winlossHistory.className='winloss-history empty';winlossHistory.textContent='Registra al menos dos resultados para comenzar el control';return}
+  winlossHistory.className='winloss-history';
+  rounds.forEach((r,i)=>{
+    const row=document.createElement('div'); row.className='winloss-row';
+    const idx=document.createElement('div'); idx.className='wl-index'; idx.textContent=`#${rounds.length-i}`;
+    const refs=document.createElement('div'); refs.className='wl-refs'; refs.innerHTML=`<span class="wl-label">REF</span><b>±${r.refMagnitude}</b> <span>${r.refNumbers[0]} / ${r.refNumbers[1]}</span><span class="wl-sep">·</span><span class="wl-label">MEDIA 20</span><b>±${r.avgMagnitude}</b> <span>${r.avgNumbers[0]} / ${r.avgNumbers[1]}</span>`;
+    const actual=document.createElement('div'); actual.className=`wl-actual ${color(r.next)}`; actual.textContent=r.next;
+    const outcome=document.createElement('div'); outcome.className=`wl-outcome ${r.outcome.toLowerCase()}`; outcome.textContent=r.outcome;
+    row.append(idx,refs,actual,outcome); winlossHistory.appendChild(row);
+  });
+}
+
+function render(){renderResults();renderJumps();renderDetected();renderFrequency();renderReference();renderSelectedJump();renderWinLoss()}
 undoResult.addEventListener("click",()=>{if(results.length){results.shift();jumps=rebuildJumps();saveData();render()}});
 clearHistory.addEventListener("click",()=>{results=[];jumps=[];saveData();render()});
 (async function init(){await loadData();renderNumbers();render()})();
