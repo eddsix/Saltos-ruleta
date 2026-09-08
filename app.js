@@ -109,7 +109,8 @@ function getReferenceForState(stateResults){
     if(value!==null)stateJumps.push(value);
   }
   if(!stateJumps.length)return null;
-  const magnitude=Math.abs(stateJumps[0]);
+  const recent3=stateJumps.slice(0,3).map(Math.abs);
+  const magnitude=Math.max(1,Math.min(18,Math.round(recent3.reduce((a,b)=>a+b,0)/recent3.length)));
   const current=stateResults[0];
   const currentIndex=WHEEL.indexOf(current);
   if(currentIndex<0)return null;
